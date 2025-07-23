@@ -5,6 +5,7 @@ import { Camera, Upload } from "lucide-react";
 import { Button } from "./ui/button";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 const HomeSearch = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -50,8 +51,8 @@ const HomeSearch = () => {
     });
   const [searchImage, setSearchImage] = useState(null);
   const [iseUploading, setIsUploading] = useState(false);
-
-  const handleImageSearch = (e) => {
+  const router = useRouter();
+  const handleImageSearch = async (e) => {
     e.preventDefault();
 
     if (!searchImage) {
@@ -63,7 +64,15 @@ const HomeSearch = () => {
     toast.success("Image search triggered!");
   };
 
-  const handleTextSubmit = () => {};
+  const handleTextSubmit = (e) => {
+    e.preventDefault();
+    if (!searchTerm.trim()) {
+      toast.error("Please enter a search term");
+      return;
+    }
+
+    router.push(`/cars?search=${encodeURIComponent(searchTerm)}`);
+  };
   return (
     <div>
       <form onSubmit={handleTextSubmit}>
@@ -96,9 +105,9 @@ const HomeSearch = () => {
       {isImageSearchActive && (
         <div className="mt-4">
           <form onSubmit={handleImageSearch}>
-            <div>
+            <div className="border-2 border-dashed border-gray-300 rounded-3xl p-6 text-center">
               {imagePreview ? (
-                <div>
+                <div className="flex flex-col items-center">
                   <img
                     src={imagePreview}
                     alt="Car Preview"
@@ -137,6 +146,17 @@ const HomeSearch = () => {
                 </div>
               )}
             </div>
+
+            {imagePreview && (
+              <Button
+                type="submit "
+                className="w-full mt-2"
+                disabled={iseUploading}
+              >
+                {" "}
+                {iseUploading ? "Uploading..." : "Search With this Image"}
+              </Button>
+            )}
           </form>
         </div>
       )}
