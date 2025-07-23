@@ -18,7 +18,7 @@ datasource db {
 
 model User {
   id              String @id @default(uuid())
-  clearkUserId    String @unique //CLEARK USER ID
+  clerkUserId    String @unique //CLEARK USER ID
   email           String @unique
   name            String? 
   imageUrl        String?
