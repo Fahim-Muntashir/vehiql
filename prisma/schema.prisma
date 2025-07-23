@@ -14,3 +14,142 @@ datasource db {
   url      = env("DATABASE_URL")
   directUrl=env("DIRECT_URL")
 }
+
+
+model User {
+  id              String @id @default(uuid())
+  clearkUserId    String @unique //CLEARK USER ID
+  email           String @unique
+  name            String? 
+  imageUrl        String?
+  phone           String?
+  createdAt       DateTime @default(now())
+  uodatedAt       DateTime @updatedAt
+  role            UserRole @default(USER)
+  savedCars       UserSavedCar[]
+  testDrives      TestDriveBooking[]
+
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+model Car {
+  id                String             @id @default(uuid())
+  make              String
+  model             String
+  year              Int
+  price             Decimal            @db.Decimal(10, 2)
+  mileage           Int
+  color             String
+  fuelType          String
+  transmission      String
+  bodyType          String
+  seats             Int?
+  description       String
+  status            CarStatus          @default(AVAILABLE)
+  featured          Boolean            @default(false)
+  images            String[]           // Array of Supabase storage URLs
+  savedBy           UserSavedCar[]
+  testDriveBookings TestDriveBooking[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+@@index([make, model])    // Composite index on make and model
+@@index([bodyType])       // Index on bodyType
+@@index([price])          // Index on price
+@@index([year])           // Index on year
+@@index([status])         // Index on status
+@@index([fuelType])       // Index on fuelType
+@@index([featured])       // Index on featured
+
+}
+
+
+enum CarStatus {
+  AVAILABLE
+  UNAVAILABLE
+  SOLD
+}
+
+model DealershipInfo {
+  id            String        @id @default(uuid())
+  name          String        @default("Vehiql Motors")
+  address       String        @default("69 Car Street, Autoville, CA 69420")
+  phone         String        @default("+1 (555) 123-4567")
+  email         String        @default("contact@vehiql.com")
+  workingHours  WorkingHour[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+
+model WorkingHour {
+  id           String         @id @default(uuid())
+  dealershipId String
+  dealership   DealershipInfo @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  dayOfWeek    DayOfWeek
+  openTime     String         // Format: "HH:MM" (24-hour)
+  closeTime    String         // Format: "HH:MM" (24-hour)
+  isOpen       Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  @@unique([dealershipId, dayOfWeek])
+  @@index([dealershipId])
+  @@index([dayOfWeek])
+  @@index([isOpen])
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+
+model UserSavedCar {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  carId     String
+  car       Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+  savedAt   DateTime @default(now())
+
+  @@unique([userId, carId])
+  @@index([userId])
+  @@index([carId])
+}
+
+model TestDriveBooking {
+  id          String        @id @default(uuid())
+  carId       String
+  car         Car           @relation(fields: [carId], references: [id])
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  bookingDate DateTime      @db.Date
+  startTime   String        // Format: "HH:MM" (24-hour)
+  endTime     String        // Format: "HH:MM" (24-hour)
+  status      BookingStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([carId])
+  @@index([userId])
+  @@index([bookingDate])
+  @@index([status])
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCLELLED
+  NO_SHOW
+}
