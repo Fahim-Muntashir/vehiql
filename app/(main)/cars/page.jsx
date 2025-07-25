@@ -3,7 +3,7 @@ import React from "react";
 import CarFilters from "./_components/car-filters";
 import { CarListings } from "./_components/car-listing";
 
-export const metaData = {
+export const metadata = {
   title: "Cars | Vehiql",
   description: "Browse and search for your dream car",
 };
