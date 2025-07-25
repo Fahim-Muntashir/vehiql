@@ -1,4 +1,4 @@
-import { CarsList } from "./_components/carslist";
+import { CarsList } from "./_components/cars-list";
 
 export const metadata = {
   title: "Cars | Vehiql Admin",

@@ -1,11 +1,13 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Input } from "./ui/input";
 import { Camera, Upload } from "lucide-react";
 import { Button } from "./ui/button";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import useFetch from "@/hooks/use-fetch";
+import { processImageSearch } from "@/actions/home";
 
 const HomeSearch = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -52,6 +54,14 @@ const HomeSearch = () => {
   const [searchImage, setSearchImage] = useState(null);
   const [iseUploading, setIsUploading] = useState(false);
   const router = useRouter();
+
+  const {
+    loading: isProcessing,
+    fn: processImageFN,
+    data: processResult,
+    error: processError,
+  } = useFetch(processImageSearch);
+
   const handleImageSearch = async (e) => {
     e.preventDefault();
 
@@ -60,9 +70,37 @@ const HomeSearch = () => {
       return;
     }
 
-    // Placeholder logic – replace with your actual image search logic
-    toast.success("Image search triggered!");
+    try {
+      await processImageFN(searchImage); // <-- this triggers the server action
+    } catch (err) {
+      console.error("Image search error:", err);
+      toast.error("Image search failed.");
+    }
   };
+
+  useEffect(() => {
+    if (processResult?.success) {
+      const params = new URLSearchParams();
+
+      if (processResult.data.make) params.set("make", processResult.data.make);
+
+      if (processResult.data.bodyType)
+        params.set("bodyType", processResult.data.bodyType);
+
+      if (processResult.data.color)
+        params.set("color", processResult.data.color);
+
+      router.push(`/cars?${params.toString()}`);
+    }
+  }, [processResult]);
+
+  useEffect(() => {
+    if (processError) {
+      toast.error(
+        "Failed to analyze image:" + (processError.message || "unknown error")
+      );
+    }
+  }, [processError]);
 
   const handleTextSubmit = (e) => {
     e.preventDefault();
@@ -151,10 +189,14 @@ const HomeSearch = () => {
               <Button
                 type="submit "
                 className="w-full mt-2"
-                disabled={iseUploading}
+                disabled={iseUploading || isProcessing}
               >
                 {" "}
-                {iseUploading ? "Uploading..." : "Search With this Image"}
+                {iseUploading
+                  ? "Uploading..."
+                  : isProcessing
+                    ? "Analyzing Image"
+                    : "Search With this Image"}
               </Button>
             )}
           </form>
