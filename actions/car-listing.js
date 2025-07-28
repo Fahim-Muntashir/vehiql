@@ -2,6 +2,7 @@
 import { serializeCarData } from "@/lib/helpers";
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import { revalidatePath } from "next/cache";
 
 export async function getCarFilters() {
   try {
@@ -201,7 +202,7 @@ export async function toggleSavedCar(carId) {
     if (!user) throw new Error("User not found"); // ❌ Throw if user not found
 
     // check if the car exists
-    const car = await db.car.findUniqe({
+    const car = await db.car.findUnique({
       where: { id: carId },
     });
 
@@ -258,5 +259,55 @@ export async function toggleSavedCar(carId) {
     };
   } catch (error) {
     throw new Error("Error toggling saved car:" + error.message);
+  }
+}
+
+/**
+ * Get user's saved cars
+ */
+export async function getSavedCars() {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return {
+        success: false,
+        error: "Unauthorized",
+      };
+    }
+
+    // Get the user from our database
+    const user = await db.user.findUnique({
+      where: { clerkUserId: userId },
+    });
+
+    if (!user) {
+      return {
+        success: false,
+        error: "User not found",
+      };
+    }
+
+    // Get saved cars with their details
+    const savedCars = await db.userSavedCar.findMany({
+      where: { userId: user.id },
+      include: {
+        car: true,
+      },
+      orderBy: { savedAt: "desc" },
+    });
+
+    // Extract and format car data
+    const cars = savedCars.map((saved) => serializeCarData(saved.car));
+
+    return {
+      success: true,
+      data: cars,
+    };
+  } catch (error) {
+    console.error("Error fetching saved cars:", error);
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }
