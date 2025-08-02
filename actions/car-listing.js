@@ -349,7 +349,7 @@ export async function getCarById(carId) {
       isWishlisted = !!savedCar;
     }
 
-    const existingTestDrive = await db.testDrive.findFirst({
+    const existingTestDrive = await db.testDriveBooking.findFirst({
       where: {
         carId,
         userId: dbUser?.id,
@@ -368,7 +368,7 @@ export async function getCarById(carId) {
       };
     }
 
-    const dealership = await db.dealership.findUnique({
+    const dealership = await db.dealershipInfo.findFirst({
       include: {
         workingHours: true,
       },
@@ -395,5 +395,7 @@ export async function getCarById(carId) {
         },
       },
     };
-  } catch (error) {}
+  } catch (error) {
+    throw new Error("Error fetching car Details: " + error.message);
+  }
 }
