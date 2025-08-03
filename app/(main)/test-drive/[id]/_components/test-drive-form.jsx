@@ -1,10 +1,19 @@
 "use client";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Car } from "lucide-react";
+import { format } from "date-fns";
+import { CalendarIcon, Car } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import z from "zod";
 
 const testDriveSchema = z.object({
@@ -42,6 +51,25 @@ const TestDriveForm = ({ car, testDriveInfo }) => {
   const dealership = testDriveInfo?.dealership;
   const existingBookings = testDriveInfo?.existingBookings || [];
   const seledtedDate = watch("date");
+
+  const onSubmit = async (data) => {};
+  const isDayDisabled = (day) => {
+    // Disable past dates
+    if (day < new Date()) {
+      return true;
+    }
+
+    // Get day of week
+    const dayOfWeek = format(day, "EEEE").toUpperCase();
+
+    // Find working hours for the day
+    const daySchedule = dealership?.workingHours?.find(
+      (schedule) => schedule.dayOfWeek === dayOfWeek
+    );
+
+    // Disable if dealership is closed on this day
+    return !daySchedule || !daySchedule.isOpen;
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -129,6 +157,99 @@ const TestDriveForm = ({ car, testDriveInfo }) => {
         <Card>
           <CardContent>
             <h2 className="text-xl font-bold mb-6">Schedule Your Test Drive</h2>
+
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">
+                  Select a Date
+                </label>
+                <Controller
+                  name="date"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="space-y-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value
+                              ? format(field.value, "PPP")
+                              : "Pick a date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent>
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            className={"rounded-md border"}
+                            initialFocus
+                            disabled={isDayDisabled}
+                          />
+                        </PopoverContent>
+                      </Popover>
+
+                      {errors.date && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.date.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                />
+              </div>{" "}
+              <div className="space-y-2`">
+                <label className="block text-sm font-medium ">
+                  Select a Time Slot
+                </label>
+                <Controller
+                  name="date"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="space-y-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value
+                              ? format(field.value, "PPP")
+                              : "Pick a date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent>
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            className={"rounded-md border"}
+                            initialFocus
+                            disabled={isDayDisabled}
+                          />
+                        </PopoverContent>
+                      </Popover>
+
+                      {errors.date && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.date.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                />
+              </div>
+            </form>
           </CardContent>
         </Card>
       </div>
