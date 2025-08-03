@@ -1,13 +1,37 @@
 "use client";
 import { toggleSavedCar } from "@/actions/car-listing";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import useFetch from "@/hooks/use-fetch";
+import { formatCurrency } from "@/lib/helpers";
 import { useAuth } from "@clerk/nextjs";
-import { CarIcon, Heart, Share2 } from "lucide-react";
+import {
+  Calendar,
+  Car,
+  CarIcon,
+  Currency,
+  Fuel,
+  Gauge,
+  Heart,
+  MessageSquare,
+  Share2,
+} from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import is from "zod/v4/locales/is.cjs";
+import EmiCalculator from "./emi-calculator";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { format } from "date-fns";
 
 const CarDetails = ({ car, testDriveInfo }) => {
   const router = useRouter();
@@ -68,6 +92,16 @@ const CarDetails = ({ car, testDriveInfo }) => {
   const copyToClipboard = () => {
     navigator.clipboard.writeText(window.location.href);
     toast.success("Link copied to clipboard!");
+  };
+
+  const handleBookTestDrive = () => {
+    if (!isSignedIn) {
+      toast.error("Please sign in to book a test drive");
+      router.push("/sign-in");
+      return;
+    }
+
+    router.push(`/test-drive/${car.id}`);
   };
 
   return (
@@ -143,8 +177,147 @@ const CarDetails = ({ car, testDriveInfo }) => {
         </div>
 
         <div>
-          <div className="flex items-center justify-between ">
-            <Badge className="mb-2">{car.bodyType}</Badge>
+          <div className="flex items-center justify-between">
+            <Badge className={"mb-2"}>{car.bodyType}</Badge>
+          </div>
+
+          <h1 className="text-4xl font-bold mb-1">
+            {car.year} {car.make} {car.model}
+          </h1>
+
+          <div className="text-2xl font-bold text-blue-600">
+            {formatCurrency(car.price)}
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 my-6">
+            <div className="flex items-center gap-2">
+              <Gauge className="text-gray-500 h-5 w-5" />
+              <span>{car.mileage.toLocaleString()} miles</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Fuel className="text-gray-500 h-5 w-5" />
+              <span>{car.fuelType}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Car className="text-gray-500 h-5 w-5" />
+              <span>{car.transmission}</span>
+            </div>
+          </div>
+
+          <Dialog>
+            <DialogTrigger className="w-full text-start">
+              <Card>
+                <CardContent>
+                  <div className="flex items-center gap-2 text-lg font-medium mb-2">
+                    <Currency className="h-5 w-5 text-blue-600" />
+                    <h3>EMI</h3>
+                  </div>
+                  <div className="formatCurrency">
+                    Estimated
+                    <span className="font-bold text-gray-900">
+                      {formatCurrency(car.price / 60)}
+                    </span>{" "}
+                    for 60 months
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    *Based on $0 down payment and 4.5% interest rate
+                  </div>
+                </CardContent>
+              </Card>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <EmiCalculator price={car.price} />
+              </DialogHeader>
+            </DialogContent>
+          </Dialog>
+
+          {/* Request More Info */}
+          <Card className="mb-6 my-6">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-lg font-medium mb-2">
+                <MessageSquare className="h-5 w-5 text-blue-600" />
+                <h3>Have Questions?</h3>
+              </div>
+              <p className="text-sm text-gray-600 mb-3">
+                Our representatives are available to answer all your queries
+                about this vehicle.
+              </p>
+              <a href="mailto:fahimmuntashir07@gmail.com">
+                <Button variant="outline" className="w-full">
+                  Request Info
+                </Button>
+              </a>
+            </CardContent>
+          </Card>
+
+          {(car.status === "SOLD" || car.status === "UNAVAILABLE") && (
+            <Alert variant="destructive">
+              <AlertTitle className="capitalize">
+                This car is {car.status.toLowerCase()}
+              </AlertTitle>
+              <AlertDescription>Please check again later.</AlertDescription>
+            </Alert>
+          )}
+
+          {car.status !== "SOLD" && car.status !== "UNAVAILABLE" && (
+            <Button
+              className="w-full py-6 text-lg"
+              disabled={testDriveInfo.userTestDrive}
+              onClick={handleBookTestDrive}
+            >
+              <Calendar className="h-5 w-5 mr-2" />
+
+              {testDriveInfo.userTestDrive
+                ? `Booked for ${format(
+                    new Date(testDriveInfo.userTestDrive.bookingDate),
+                    "EEEE, MMMM d, yyyy"
+                  )}`
+                : "Book Test Drive"}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <div>
+          <div>
+            <h3 className="text-2xl font-bold mb-6">Description</h3>
+            <p className="whitespace-pre-line text-gray-700">
+              {car.description}
+            </p>
+          </div>
+
+          <div>
+            <h3 className="text-2xl font-bold mb-6">Features </h3>
+
+            <ul className="grid grid-cols-1 gap-2">
+              <li className="flex items-center gap-2">
+                <span className="h-2 w-2 bg-blue-600 rounded-full"></span>
+                {car.transmission} Transmission
+              </li>
+
+              <li className="flex items-center gap-2">
+                <span className="h-2 w-2 bg-blue-600 rounded-full"></span>
+                {car.fuelType} Engine
+              </li>
+
+              <li className="flex items-center gap-2">
+                <span className="h-2 w-2 bg-blue-600 rounded-full"></span>
+                {car.bodyType} Body Style
+              </li>
+
+              {car.seats && (
+                <li className="flex items-center gap-2">
+                  <span className="h-2 w-2 bg-blue-600 rounded-full"></span>
+                  {car.seats} Seats
+                </li>
+              )}
+
+              <li className="flex items-center gap-2">
+                <span className="h-2 w-2 bg-blue-600 rounded-full"></span>
+                {car.color} Exterior
+              </li>
+            </ul>
           </div>
         </div>
       </div>
