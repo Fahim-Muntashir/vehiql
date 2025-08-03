@@ -22,6 +22,7 @@ import {
   Fuel,
   Gauge,
   Heart,
+  LocateFixed,
   MessageSquare,
   Share2,
 } from "lucide-react";
@@ -32,6 +33,7 @@ import is from "zod/v4/locales/is.cjs";
 import EmiCalculator from "./emi-calculator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 const CarDetails = ({ car, testDriveInfo }) => {
   const router = useRouter();
@@ -278,8 +280,8 @@ const CarDetails = ({ car, testDriveInfo }) => {
         </div>
       </div>
 
-      <div>
-        <div>
+      <div className="mt-12 p-6 bg-white rounded-lg shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
             <h3 className="text-2xl font-bold mb-6">Description</h3>
             <p className="whitespace-pre-line text-gray-700">
@@ -318,6 +320,140 @@ const CarDetails = ({ car, testDriveInfo }) => {
                 {car.color} Exterior
               </li>
             </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Specifications Section */}
+      <div className="mt-8 p-6 bg-white rounded-lg shadow-sm">
+        <h2 className="text-2xl font-bold mb-6">Specifications</h2>
+        <div className="bg-gray-50 rounded-lg p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">Make</span>
+              <span className="font-medium">{car.make}</span>
+            </div>
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">Model</span>
+              <span className="font-medium">{car.model}</span>
+            </div>
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">Year</span>
+              <span className="font-medium">{car.year}</span>
+            </div>
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">Body Type</span>
+              <span className="font-medium">{car.bodyType}</span>
+            </div>
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">Fuel Type</span>
+              <span className="font-medium">{car.fuelType}</span>
+            </div>
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">Transmission</span>
+              <span className="font-medium">{car.transmission}</span>
+            </div>
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">Mileage</span>
+              <span className="font-medium">
+                {car.mileage.toLocaleString()} miles
+              </span>
+            </div>
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-gray-600">Color</span>
+              <span className="font-medium">{car.color}</span>
+            </div>
+            {car.seats && (
+              <div className="flex justify-between py-2 border-b">
+                <span className="text-gray-600">Seats</span>
+                <span className="font-medium">{car.seats}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Dealership Location Section */}
+      <div className="mt-8 p-6 bg-white rounded-lg shadow-sm">
+        <h2 className="text-2xl font-bold mb-6">Dealership Location</h2>
+        <div className="bg-gray-50 rounded-lg p-6">
+          <div className="flex flex-col md:flex-row gap-6 justify-between">
+            {/* Dealership Name and Address */}
+            <div className="flex items-start gap-3">
+              <LocateFixed className="h-5 w-5 text-blue-600 mt-1 flex-shrink-0" />
+              <div>
+                <h4 className="font-medium">Vehiql Motors</h4>
+                <p className="text-gray-600">
+                  {testDriveInfo.dealership?.address || "Not Available"}
+                </p>
+                <p className="text-gray-600 mt-1">
+                  Phone: {testDriveInfo.dealership?.phone || "Not Available"}
+                </p>
+                <p className="text-gray-600">
+                  Email: {testDriveInfo.dealership?.email || "Not Available"}
+                </p>
+              </div>
+            </div>
+
+            {/* Working Hours */}
+            <div className="md:w-1/2 lg:w-1/3">
+              <h4 className="font-medium mb-2">Working Hours</h4>
+              <div className="space-y-2">
+                {testDriveInfo.dealership?.workingHours
+                  ? testDriveInfo.dealership.workingHours
+                      .sort((a, b) => {
+                        const days = [
+                          "MONDAY",
+                          "TUESDAY",
+                          "WEDNESDAY",
+                          "THURSDAY",
+                          "FRIDAY",
+                          "SATURDAY",
+                          "SUNDAY",
+                        ];
+                        return (
+                          days.indexOf(a.dayOfWeek) - days.indexOf(b.dayOfWeek)
+                        );
+                      })
+                      .map((day) => (
+                        <div
+                          key={day.dayOfWeek}
+                          className="flex justify-between text-sm"
+                        >
+                          <span className="text-gray-600">
+                            {day.dayOfWeek.charAt(0) +
+                              day.dayOfWeek.slice(1).toLowerCase()}
+                          </span>
+                          <span>
+                            {day.isOpen
+                              ? `${day.openTime} - ${day.closeTime}`
+                              : "Closed"}
+                          </span>
+                        </div>
+                      ))
+                  : // Default hours if none provided
+                    [
+                      "Monday",
+                      "Tuesday",
+                      "Wednesday",
+                      "Thursday",
+                      "Friday",
+                      "Saturday",
+                      "Sunday",
+                    ].map((day, index) => (
+                      <div key={day} className="flex justify-between text-sm">
+                        <span className="text-gray-600">{day}</span>
+                        <span>
+                          {index < 5
+                            ? "9:00 - 18:00"
+                            : index === 5
+                              ? "10:00 - 16:00"
+                              : "Closed"}
+                        </span>
+                      </div>
+                    ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>

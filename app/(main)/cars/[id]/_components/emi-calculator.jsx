@@ -81,6 +81,7 @@ function EmiCalculator({ price = 1000 }) {
 
   return (
     <div className="w-full max-h-[80vh] overflow-y-auto pr-1">
+      <h1 className="text-2xl font-bold">Vehiql Car Loan Calculator</h1>
       <div className="w-full">
         <div className="flex items-center mb-6">
           <i className="fas fa-car text-gray-900 dark:text-white text-2xl mr-3"></i>
