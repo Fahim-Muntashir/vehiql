@@ -1,5 +1,6 @@
 import { getFeaturedCars } from "@/actions/home";
 import CarCard from "@/components/car-card";
+import Footer from "@/components/footer";
 import HomeSearch from "@/components/home-search";
 import {
   Accordion,
@@ -225,6 +226,7 @@ export default async function Home() {
           </div>
         </div>
       </section>
+      <Footer></Footer>
     </div>
   );
 }

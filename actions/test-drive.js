@@ -19,7 +19,7 @@ export async function bookTestDrive({
       throw new Error("You must be logged in to book a test drive.");
     }
 
-    const user = await db.user.findUniqe({
+    const user = await db.user.findUnique({
       where: { clerkUserId: userId },
     });
 
@@ -135,18 +135,12 @@ export async function cancelTestDrive(bookingId) {
       };
     }
 
-    if (booking.status !== "CANCELLED") {
-      return {
-        success: false,
-        error: "This booking is already cancelled.",
-      };
+    if (booking.status === "CANCELLED") {
+      return { success: false, error: "This booking is already cancelled." };
     }
 
-    if (booking.status !== "COMPLETED") {
-      return {
-        success: false,
-        error: "This booking is already completed.",
-      };
+    if (booking.status === "COMPLETED") {
+      return { success: false, error: "This booking is already completed." };
     }
 
     await db.testDriveBooking.update({

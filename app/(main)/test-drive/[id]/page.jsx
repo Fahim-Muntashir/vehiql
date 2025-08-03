@@ -1,4 +1,7 @@
+import { getCarById } from "@/actions/car-listing";
+import { notFound } from "next/navigation";
 import React from "react";
+import TestDriveForm from "./_components/test-drive-form";
 
 export async function generateMetadata() {
   return {
@@ -7,10 +10,23 @@ export async function generateMetadata() {
   };
 }
 
-const TestDrivePage = ({ params }) => {
+const TestDrivePage = async ({ params }) => {
+  const { id } = params;
+
+  const result = await getCarById(id);
+
+  if (!result.success) {
+    notFound();
+  }
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold">Test Drive Page</h1>
+    <div className="container mx-auto px-4 py-24">
+      <h1 className="text-6xl mb-6 gradient-title">Test Drive Page</h1>
+
+      <TestDriveForm
+        car={result.data}
+        testDriveInfo={result.data.testDriveInfo}
+      />
     </div>
   );
 };
