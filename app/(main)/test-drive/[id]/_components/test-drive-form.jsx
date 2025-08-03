@@ -1,4 +1,5 @@
 "use client";
+import { bookTestDrive } from "@/actions/test-drive";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,14 +8,24 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import useFetch from "@/hooks/use-fetch";
 import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { CalendarIcon, Car } from "lucide-react";
+import { se } from "date-fns/locale";
+import { CalendarIcon, Car, CheckCircle2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import z from "zod";
+import z, { set } from "zod";
 
 const testDriveSchema = z.object({
   date: z.date({
@@ -48,11 +59,22 @@ const TestDriveForm = ({ car, testDriveInfo }) => {
     },
   });
 
+  const {
+    loading: bookingInProgress,
+    fn: bookTestDriveFn,
+    data: bookingResult,
+    error: bookingError,
+  } = useFetch(bookTestDrive);
+
   const dealership = testDriveInfo?.dealership;
   const existingBookings = testDriveInfo?.existingBookings || [];
-  const seledtedDate = watch("date");
+  const selectedDate = watch("date");
 
-  const onSubmit = async (data) => {};
+  const onSubmit = async (data) => {
+    const selectedSlot = availableTimeSlots.find(
+      (slot) => slot.id === data.timeSlot
+    );
+  };
   const isDayDisabled = (day) => {
     // Disable past dates
     if (day < new Date()) {
@@ -70,6 +92,44 @@ const TestDriveForm = ({ car, testDriveInfo }) => {
     // Disable if dealership is closed on this day
     return !daySchedule || !daySchedule.isOpen;
   };
+
+  useEffect(() => {
+    if (!selectedDate || !dealership?.workingHours) return;
+    const selectedDayOfWeek = format(selectedDate, "EEEE").toUpperCase();
+
+    const daySechedule = dealership.workingHours.find(
+      (day) => day.dayOfWeek === selectedDayOfWeek
+    );
+
+    if (!daySechedule || !daySechedule.isOpen) {
+      setAvailbaleTimeSlots([]);
+      return;
+    }
+
+    const openHour = parseInt(daySechedule.openTime.split(":")[0]);
+    const closeHour = parseInt(daySechedule.closeTime.split(":")[0]);
+
+    const slots = [];
+    for (let hour = openHour; hour < closeHour; hour++) {
+      const startTime = new Date(selectedDate);
+      startTime.setHours(hour, 0, 0);
+
+      const endTime = new Date(selectedDate);
+      endTime.setHours(hour + 1, 0, 0);
+
+      slots.push({
+        id: `${format(startTime, "HHmm")}-${format(endTime, "HHmm")}`,
+        label: `${format(startTime, "h:mm a")} - ${format(endTime, "h:mm a")}`, // e.g., 2:00 PM - 3:00 PM
+        startTime: format(startTime, "HHmm"),
+        endTime: format(endTime, "HHmm"),
+      });
+    }
+
+    setAvailbaleTimeSlots(slots);
+
+    // clear time slot selection when date changes
+    setValue("timeSlot", "");
+  }, [selectedDate]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -209,47 +269,98 @@ const TestDriveForm = ({ car, testDriveInfo }) => {
                   Select a Time Slot
                 </label>
                 <Controller
-                  name="date"
+                  name="timeSlot"
                   control={control}
                   render={({ field }) => (
                     <div className="space-y-2">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value
-                              ? format(field.value, "PPP")
-                              : "Pick a date"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent>
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            className={"rounded-md border"}
-                            initialFocus
-                            disabled={isDayDisabled}
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={
+                          !selectedDate || !availableTimeSlots.length === 0
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={
+                              !selectedDate
+                                ? "Select a date first"
+                                : availableTimeSlots.length === 0
+                                  ? "No available time slots"
+                                  : "Select a time slot"
+                            }
                           />
-                        </PopoverContent>
-                      </Popover>
+                        </SelectTrigger>
 
-                      {errors.date && (
+                        <SelectContent>
+                          {availableTimeSlots.map((slot) => (
+                            <SelectItem key={slot.id} value={slot.id}>
+                              {slot.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {errors.timeSlot && (
                         <p className="text-red-500 text-sm mt-1">
-                          {errors.date.message}
+                          {errors.timeSlot.message}
                         </p>
                       )}
                     </div>
                   )}
                 />
               </div>
+              {/* Notes */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">
+                  Additional Notes (Optional)
+                </label>
+
+                <Controller
+                  name="notes"
+                  control={control}
+                  render={({ field }) => (
+                    <Textarea
+                      {...field}
+                      placeholder="Any specific questions or requests for your test drive?"
+                      className="min-h-24"
+                    />
+                  )}
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={bookingInProgress}
+              >
+                {bookingInProgress ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Booking Your Test Drive
+                  </>
+                ) : (
+                  "Book Test Drive"
+                )}
+              </Button>
             </form>
+
+            <div className="mt-8 bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-medium mb-2">What to expect</h3>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li className="flex items-start">
+                  <CheckCircle2 className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
+                  Bring your driver's license for verification
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle2 className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
+                  Test drives typically last 30–60 minutes
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle2 className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
+                  A dealership representative will accompany you
+                </li>
+              </ul>
+            </div>
           </CardContent>
         </Card>
       </div>
