@@ -7,36 +7,27 @@ import { revalidatePath } from "next/cache";
 
 export async function bookTestDrive({
   carId,
-  bookingData,
+  bookingDate, // renamed here
   startTime,
   endTime,
   notes,
 }) {
   try {
     const { userId } = await auth();
+    if (!userId) throw new Error("You must be logged in to book a test drive.");
 
-    if (!userId) {
-      throw new Error("You must be logged in to book a test drive.");
-    }
-
-    const user = await db.user.findUnique({
-      where: { clerkUserId: userId },
-    });
-
+    const user = await db.user.findUnique({ where: { clerkUserId: userId } });
     if (!user) throw new Error("User not found.");
 
     const car = await db.car.findUnique({
       where: { id: carId, status: "AVAILABLE" },
     });
-
-    if (!car) {
-      throw new Error("Car not found or not available for test drive.");
-    }
+    if (!car) throw new Error("Car not found or not available.");
 
     const existingBooking = await db.testDriveBooking.findFirst({
       where: {
         carId,
-        bookingDate: new Date(bookingData),
+        bookingDate: new Date(bookingDate),
         startTime,
         status: { in: ["PENDING", "CONFIRMED"] },
       },
@@ -50,7 +41,7 @@ export async function bookTestDrive({
       data: {
         carId,
         userId: user.id,
-        bookingDate: new Date(bookingData),
+        bookingDate: new Date(bookingDate),
         startTime,
         endTime,
         notes: notes || null,
@@ -113,7 +104,7 @@ export async function cancelTestDrive(bookingId) {
       throw new Error("You must be logged in to cancel a test drive.");
     }
 
-    const user = await db.user.findUniqe({
+    const user = await db.user.findUnique({
       where: { clerkUserId: userId },
     });
 

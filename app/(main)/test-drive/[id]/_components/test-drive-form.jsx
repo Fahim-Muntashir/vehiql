@@ -4,6 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -19,13 +27,13 @@ import { Textarea } from "@/components/ui/textarea";
 import useFetch from "@/hooks/use-fetch";
 import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
-import { se } from "date-fns/locale";
+import { format, parseISO } from "date-fns";
 import { CalendarIcon, Car, CheckCircle2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import z, { set } from "zod";
+import { toast } from "sonner";
+import z from "zod";
 
 const testDriveSchema = z.object({
   date: z.date({
@@ -39,7 +47,7 @@ const testDriveSchema = z.object({
 
 const TestDriveForm = ({ car, testDriveInfo }) => {
   const router = useRouter();
-  const [availableTimeSlots, setAvailbaleTimeSlots] = useState([]);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [bookingDetails, setBookingDetails] = useState();
 
@@ -66,6 +74,32 @@ const TestDriveForm = ({ car, testDriveInfo }) => {
     error: bookingError,
   } = useFetch(bookTestDrive);
 
+  useEffect(() => {
+    if (bookingError) {
+      toast.error(bookingError.message || "Failed to book test drive");
+    }
+  }, [bookingError]);
+
+  useEffect(() => {
+    if (bookingResult?.success) {
+      setBookingDetails({
+        date: format(bookingResult?.data?.bookingDate, "EEEE, MMMM d, yyyy"),
+        timeSlot: `${format(
+          parseISO(`2022-01-01T${bookingResult?.data?.startTime}`),
+          "h:mm a"
+        )} - ${format(
+          parseISO(`2022-01-01T${bookingResult?.data?.endTime}`),
+          "h:mm a"
+        )}`,
+        notes: bookingResult?.data?.notes,
+      });
+      setShowConfirmation(true);
+
+      // Reset form
+      reset();
+    }
+  }, [bookingResult, reset]);
+
   const dealership = testDriveInfo?.dealership;
   const existingBookings = testDriveInfo?.existingBookings || [];
   const selectedDate = watch("date");
@@ -74,6 +108,19 @@ const TestDriveForm = ({ car, testDriveInfo }) => {
     const selectedSlot = availableTimeSlots.find(
       (slot) => slot.id === data.timeSlot
     );
+
+    if (!selectedSlot) {
+      toast.error("Please select a valid time slot");
+      return;
+    }
+
+    await bookTestDriveFn({
+      carId: car.id,
+      bookingDate: format(data.date, "yyyy-MM-dd"),
+      startTime: selectedSlot.startTime,
+      endTime: selectedSlot.endTime,
+      notes: data.notes || "",
+    });
   };
   const isDayDisabled = (day) => {
     // Disable past dates
@@ -102,7 +149,7 @@ const TestDriveForm = ({ car, testDriveInfo }) => {
     );
 
     if (!daySechedule || !daySechedule.isOpen) {
-      setAvailbaleTimeSlots([]);
+      setAvailableTimeSlots([]);
       return;
     }
 
@@ -125,11 +172,16 @@ const TestDriveForm = ({ car, testDriveInfo }) => {
       });
     }
 
-    setAvailbaleTimeSlots(slots);
+    setAvailableTimeSlots(slots);
 
     // clear time slot selection when date changes
     setValue("timeSlot", "");
   }, [selectedDate]);
+
+  const handleCloseConfirmation = () => {
+    setShowConfirmation(false);
+    router.push(`/cars/${car.id}`);
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -277,7 +329,7 @@ const TestDriveForm = ({ car, testDriveInfo }) => {
                         value={field.value}
                         onValueChange={field.onChange}
                         disabled={
-                          !selectedDate || !availableTimeSlots.length === 0
+                          !selectedDate || availableTimeSlots.length === 0
                         }
                       >
                         <SelectTrigger>
@@ -364,6 +416,54 @@ const TestDriveForm = ({ car, testDriveInfo }) => {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <DialogTrigger></DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-500" />
+              Test Drive Booked Successfully
+            </DialogTitle>
+            <DialogDescription>
+              Your test drive has been confirmed with the following details:
+            </DialogDescription>
+          </DialogHeader>
+          {bookingDetails && (
+            <div className="py-4">
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="font-medium">Car:</span>
+                  <span>
+                    {car.year} {car.make} {car.model}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Date:</span>
+                  <span>{bookingDetails.date}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Time Slot:</span>
+                  <span>{bookingDetails.timeSlot}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Dealership:</span>
+                  <span>{dealership?.name || "Vehiql Motors"}</span>
+                </div>
+              </div>
+
+              <div className="mt-6 text-sm text-blue-700 p-3 bg-blue-50">
+                Please Arrive at the dealership 10 minutes before your scheduled
+                time. If you have any questions, feel free to contact us at
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <Button onClick={handleCloseConfirmation}>Done</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
