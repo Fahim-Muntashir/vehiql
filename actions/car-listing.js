@@ -7,14 +7,15 @@ import { success } from "zod";
 
 export async function getCarFilters() {
   try {
-    const models = await db.car.findMany({
+    // Get unique makes
+    const makes = await db.car.findMany({
       where: { status: "AVAILABLE" },
-      select: { model: true },
-      distinct: ["model"],
-      orderBy: { model: "asc" },
+      select: { make: true },
+      distinct: ["make"],
+      orderBy: { make: "asc" },
     });
 
-    // get body types
+    // Get unique body types
     const bodyTypes = await db.car.findMany({
       where: { status: "AVAILABLE" },
       select: { bodyType: true },
@@ -29,12 +30,8 @@ export async function getCarFilters() {
       distinct: ["fuelType"],
       orderBy: { fuelType: "asc" },
     });
-    const makes = await db.car.findMany({
-      where: { status: "AVAILABLE" },
-      select: { make: true },
-      distinct: ["make"],
-      orderBy: { make: "asc" },
-    });
+
+    // Get unique transmissions
     const transmissions = await db.car.findMany({
       where: { status: "AVAILABLE" },
       select: { transmission: true },
@@ -42,20 +39,11 @@ export async function getCarFilters() {
       orderBy: { transmission: "asc" },
     });
 
-    // Get min and max mileage using Prisma aggregations
-    const mileageAggregations = await db.car.aggregate({
+    // Get min and max prices using Prisma aggregations
+    const priceAggregations = await db.car.aggregate({
       where: { status: "AVAILABLE" },
-      _min: { mileage: true },
-      _max: { mileage: true },
-    });
-
-    const priceAggregations = await prisma.car.aggregate({
-      _min: {
-        price: true,
-      },
-      _max: {
-        price: true,
-      },
+      _min: { price: true },
+      _max: { price: true },
     });
 
     return {
@@ -76,7 +64,7 @@ export async function getCarFilters() {
       },
     };
   } catch (error) {
-    throw new Error("Error fething car filters:" + error.message);
+    throw new Error("Error fetching car filters:" + error.message);
   }
 }
 
