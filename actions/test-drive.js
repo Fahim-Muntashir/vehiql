@@ -118,11 +118,10 @@ export async function cancelTestDrive(bookingId) {
     if (!booking) {
       return { success: false, error: "Booking not found." };
     }
-
-    if (booking.userId !== userId || user.role !== "ADMIN") {
+    if (booking.userId !== user.id && user.role !== "ADMIN") {
       return {
         success: false,
-        error: "You can only cancel your own bookings.",
+        error: "Unauthorized to cancel this booking",
       };
     }
 
